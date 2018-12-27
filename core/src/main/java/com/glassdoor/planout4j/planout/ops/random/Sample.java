@@ -18,6 +18,11 @@ public class Sample<E> extends PlanOutOpRandom<List<E>> {
         super(args);
     }
 
+    public Sample(final List<E> choices, final int draws, final Object unit, final String fullSalt) {
+        this(choices, draws, unit);
+        args.put("full_salt", fullSalt);
+    }
+
     public Sample(final List<E> choices, final int draws, final Object unit) {
         super(unit);
         args.put("choices", choices);

@@ -11,6 +11,11 @@ public class RandomInteger extends PlanOutOpRandom<Long> {
         super(args);
     }
 
+    public RandomInteger(final long min, final long max, final Object unit, final String fullSalt) {
+        this(min, max, unit);
+        args.put("full_salt", fullSalt);
+    }
+
     public RandomInteger(final long min, final long max, final Object unit) {
         super(unit);
         args.put("min", min);

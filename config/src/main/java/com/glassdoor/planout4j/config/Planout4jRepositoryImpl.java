@@ -18,11 +18,17 @@ public class Planout4jRepositoryImpl implements Planout4jRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(Planout4jRepositoryImpl.class);
 
+    private static final String CROSS_LANGUAGE_MODE_KEY = "crossLanguageMode";
+
     private Planout4jConfigBackend configBackend;
     private Planout4jConfigParser configParser;
 
     public Planout4jRepositoryImpl() {
         final Config config = ConfFileLoader.loadConfig().getConfig("planout4j").getConfig("backend");
+        if (config.hasPath(CROSS_LANGUAGE_MODE_KEY)) {
+            System.setProperty(NamespaceConfig.P4J_CROSS_LANGUAGE_MODE,
+                String.valueOf(config.getBoolean(CROSS_LANGUAGE_MODE_KEY)));
+        }
         setBackendAndParser(
                 Planout4jConfigBackendFactory.createAndConfigure(config, config.getString("runtimeRepo")),
                 Planout4jConfigParser.createParser(config.getString("runtimeRepoParser")));

@@ -33,6 +33,8 @@ public class NamespaceConfig {
 
     private Map<String, ?> config;
 
+    public static final String P4J_CROSS_LANGUAGE_MODE = "planout4j.cross_language_mode";
+
     public final String name;
     public final String unit;
     public final String salt;
@@ -225,7 +227,13 @@ public class NamespaceConfig {
         checkArgument(input.containsKey(unit),
                 "Supplied input does not have a value for '%s' (primary unit of namespace %s)", unit, name);
         final Object unitVal = input.get(unit);
-        final Long segment = new RandomInteger(0, getTotalSegments()-1, unitVal).eval();
+        final Long segment;
+        if (inCrossLanguageMode()) {
+            final String fullSalt = this.name + ".segment";
+            segment = new RandomInteger(0, getTotalSegments()-1, unitVal, fullSalt).eval();
+        } else {
+            segment = new RandomInteger(0, getTotalSegments()-1, unitVal).eval();
+        }
         logger.debug("Unit {} hashes to segment {}", unitVal, segment);
         return segment.intValue();
     }
@@ -241,7 +249,13 @@ public class NamespaceConfig {
         checkArgument(segments <= availableSegments.size(),
                 "Experiment %s requests %s segments but only %s (out of %s) are available",
                 name, segments, availableSegments.size(), getTotalSegments());
-        final List<Integer> usedSegments = new Sample<>(new ArrayList<>(availableSegments), segments, expName).eval();
+        final List<Integer> usedSegments;
+        if (inCrossLanguageMode()) {
+            final String fullSalt = this.name + ".sampled_segments";
+            usedSegments = new Sample<>(new ArrayList<>(availableSegments), segments, expName, fullSalt).eval();
+        } else {
+            usedSegments = new Sample<>(new ArrayList<>(availableSegments), segments, expName).eval();
+        }
         availableSegments.removeAll(usedSegments);
         return usedSegments;
     }
@@ -258,6 +272,10 @@ public class NamespaceConfig {
 
     private void verifyChangesAllowed() {
         checkState(!noMoreChanges, "No more changes to this object!");
+    }
+
+    private static boolean inCrossLanguageMode() {
+        return Boolean.valueOf(System.getProperty(P4J_CROSS_LANGUAGE_MODE, "false"));
     }
 
     public void noMoreChanges() {
