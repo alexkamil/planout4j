@@ -27,16 +27,22 @@ public class SimpleExperimentPerfTest {
         String salt = null;
         NamespaceConfig nsConf = new NamespaceConfig(nsName, totalSegments, unit, salt);
 
-        String experimentName = "defaultExperiment";
-        String script = "itemsToShow = uniformChoice(choices=[5, 10, 20], unit=userid);";
+        String defaultExpName = "defaultExperiment";
+        String defaultExpScript = "itemsToShow = uniformChoice(choices=[5, 10, 20], unit=userid);";
+        nsConf.defineExperiment(defaultExpName, PlanoutDSLCompiler.dsl_to_json(defaultExpScript));
+        nsConf.setDefaultExperiment(defaultExpName);
 
-        nsConf.defineExperiment(experimentName, PlanoutDSLCompiler.dsl_to_json(script));
-        nsConf.setDefaultExperiment(experimentName);
+        String expName = "myexperiment";
+        int expSegments = 500;
+        String expScript = "itemsToShow = uniformChoice(choices=[777, 444], unit=userid);";
+        nsConf.defineExperiment(expName, PlanoutDSLCompiler.dsl_to_json(expScript));
+        nsConf.addExperiment(expName, expName, expSegments);
 
-        int iterations = 1000000;
+
+        Map<String, Integer> input = null;
+        Namespace namespace = new Namespace(nsConf, input, null);
+        int iterations = 500;
         int itemsToShow;
-        Map<String, Integer> input;
-        Namespace namespace;
         final int worst05Cnt = Math.round(iterations * 0.05f);
         final PriorityQueue<Long> worst05Heap = new PriorityQueue<>(worst05Cnt);
         long start=0, iterTime=0, totalTime=0, minTime = Long.MAX_VALUE, maxTime = 0;
@@ -44,7 +50,7 @@ public class SimpleExperimentPerfTest {
         for (int i = 0; i < iterations; i++) {
             start = System.nanoTime();
             input = Collections.singletonMap(unit, i);//userId
-            namespace = new Namespace(nsConf, input, null);
+            namespace.makeAssignments(input,null);
             itemsToShow = namespace.getParam("itemsToShow", 10);
             iterTime = System.nanoTime() - start;
             totalTime += iterTime;
@@ -61,6 +67,7 @@ public class SimpleExperimentPerfTest {
         System.out.format("\nPerformed %d iterations in %d millis; min/max/avg/95pct: %d/%d/%d/%d micros\n",
                 iterations, totalTime / 1000000, minTime/1000, maxTime/1000,
                 (long)(0.001 * totalTime / iterations), worst05Heap.peek()/1000);
+
 
     }
 }

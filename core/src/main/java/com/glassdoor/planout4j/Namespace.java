@@ -33,11 +33,12 @@ public class Namespace extends ParamsAccessor {
 
     private Experiment experiment;
 
-    private Map<String, ?> assignments;
+    private Map<String, Object> assignments;
 
     /**
-     * Constructs new namespace. Verifies the input is sane (has entry for the primary unit).
-     * Evaluates the assignments and caches the result.
+     * Constructs new namespace given a pre-defined map of units
+     * Verifies the input is sane (has entry for the primary unit).
+     * Evaluates the assignments in bulk and caches the result.
      * @param nsConf Namespace configuration
      * @param input Map of string parameter names to parameter values
      * @param overrides override parameter names/values to enable "freezing"
@@ -45,8 +46,8 @@ public class Namespace extends ParamsAccessor {
      */
     public Namespace(final NamespaceConfig nsConf, final Map<String, ?> input, final Map<String, ?> overrides) {
         checkArgument(nsConf != null, "nsConf is required");
-        checkArgument(MapUtils.isNotEmpty(input), "input map cannot be null or empty");
         this.nsConf = nsConf;
+        assignments = new HashMap();
         makeAssignments(input, overrides);
     }
 
@@ -54,7 +55,7 @@ public class Namespace extends ParamsAccessor {
      * @return Cached (eagerly evaluated) Map of parameter assignments
      */
     @Override
-    public Map<String, ?> getParams() {
+    public Map<String, Object> getParams() {
         return assignments;
     }
 
@@ -79,27 +80,26 @@ public class Namespace extends ParamsAccessor {
      * @param overrides optional overrides (to freeze certain output parameters)
      * @return result of making assignments as per the experiment script.
      */
-    protected Map<String, ?> evaluateExperiment(final Experiment exp, final Map<String, ?> input, final Map<String, ?> overrides) {
+    protected Map<String, Object> evaluateExperiment(final Experiment exp, final Map<String, ?> input, final Map<String, ?> overrides) {
         final Map<String, Object> _input = Helper.cast(input), _overrides = Helper.cast(overrides);
         return Collections.unmodifiableMap(new Interpreter(exp.def.getCopyOfScript(), exp.salt, _input, _overrides).getParams());
     }
 
-    private void makeAssignments(final Map<String, ?> input, final Map<String, ?> overrides) {
+    public void makeAssignments(final Map<String, ?> input, final Map<String, ?> overrides) {
+        if (input==null) return;
         final Experiment defaultExperiment = nsConf.getDefaultExperiment();
         // "compiler" ensures that default experiment is present, so it's safe to fail-fast here
         checkState(defaultExperiment != null, "Default experiment not set in %s namespace", nsConf.name);
-        final Map<String, ?> defaultAssignments = evaluateExperiment(defaultExperiment, input, overrides);
+        final Map<String, Object> defaultAssignments = evaluateExperiment(defaultExperiment, input, overrides);
         if (isBaseline(input)) {
-            assignments = defaultAssignments;
+            assignments.putAll(defaultAssignments);
         } else {
             experiment = nsConf.getExperiment(input);
             if (experiment != null) {
-                final Map<String, Object> tmp = new HashMap<>(defaultAssignments); // the tmp trick is due to generics issues
-                final Map<String, ?> specificAssignments = evaluateExperiment(experiment, input, overrides);
-                tmp.putAll(specificAssignments);
-                assignments = tmp;
+                final Map<String, Object> specificAssignments = evaluateExperiment(experiment, input, overrides);
+                assignments.putAll(specificAssignments);
             } else {
-                assignments = defaultAssignments;
+                assignments.putAll(defaultAssignments);
             }
         }
     }
